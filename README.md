@@ -1,2 +1,2 @@
-# dnmc
-Repo for Disentangled Neural Mixture Cure Models
+# untangled_tte
+Learning untangled representations for conditional time to event
