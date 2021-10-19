@@ -1,2 +1,2 @@
-# untangled_tte
-Learning untangled representations for conditional time to event
+# dnmc
+Repository for Disentangled Neural Mixture Cure Models
