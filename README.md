@@ -2,5 +2,4 @@
 
 This repository contains code needed to implement models and replicate results described in:
 
-**Disentangling *Whether* from *When* in Neural Mixture Cure Models with Dependent Censoring**
-Matthew Engelhard and Ricardo Henao, *AISTATS 2022*
+Engelhard M and Henao R, **Disentangling *Whether* from *When* in Neural Mixture Cure Models with Dependent Censoring**, *AISTATS 2022*
