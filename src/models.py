@@ -16,6 +16,7 @@ class DNMC(Model):
                  e_layer_sizes=[256,], t_layer_sizes=[256,], c_layer_sizes=[256,],
                  importance_weights=[1., 1.],
                  include_censoring_density=True,
+                 dependent_censoring=False,
                  include_psi=True,
                  mtlr_head=False,
                  n_bins=50,
@@ -31,6 +32,7 @@ class DNMC(Model):
         self.w0 = tf.convert_to_tensor(importance_weights[0], dtype=tf.float32)
         self.w1 = tf.convert_to_tensor(importance_weights[1], dtype=tf.float32)
         self.include_censoring_density = include_censoring_density
+        self.dependent_censoring = dependent_censoring
         self.include_psi = include_psi
         self.mtlr_head = mtlr_head
         self.n_bins = n_bins
@@ -57,12 +59,21 @@ class DNMC(Model):
         self.t_model = Sequential(self.t_layers)
         
         if include_censoring_density:
-            
-            if mtlr_head:
-                self.t_layers = [self.dense(ls) for ls in c_layer_sizes] + [Dense(n_bins - 1, activation='sigmoid')]
+
+            if dependent_censoring:
+                self.c_layers = [
+                    [self.dense(ls) for ls in c_layer_sizes] + [Dense(n_bins, activation='softmax')]
+                    for i in range(2)
+                ]
+                self.c_model = [Sequential(cl) for cl in self.c_layers]
+
             else:
-                self.c_layers = [self.dense(ls) for ls in c_layer_sizes] + [Dense(n_bins, activation='softmax')]
-            self.c_model = Sequential(self.c_layers)
+            
+                if mtlr_head:
+                    self.t_layers = [self.dense(ls) for ls in c_layer_sizes] + [Dense(n_bins - 1, activation='sigmoid')]
+                else:
+                    self.c_layers = [self.dense(ls) for ls in c_layer_sizes] + [Dense(n_bins, activation='softmax')]
+                self.c_model = Sequential(self.c_layers)
         
         
     def dense(self, layer_size, activation=None):
@@ -94,11 +105,24 @@ class DNMC(Model):
             self.t_pred = self.t_model(self.omega)
         
         if self.include_censoring_density:
-            if self.include_psi:
-                self.c_pred = self.c_model(tf.concat([self.psi, self.omega], axis=-1))
+            if self.dependent_censoring:
+                if self.include_psi:
+                    self.c_pred = [
+                        cm(tf.concat([self.psi, self.omega], axis=-1))
+                        for cm in self.c_model
+                    ]
+                else:
+                    self.c_pred = [
+                        cm(self.omega)
+                        for cm in self.c_model
+                    ]
+                return self.e_pred, self.t_pred, self.c_pred
             else:
-                self.c_pred = self.c_model(self.omega)
-            return self.e_pred, self.t_pred, self.c_pred
+                if self.include_psi:
+                    self.c_pred = self.c_model(tf.concat([self.psi, self.omega], axis=-1))
+                else:
+                    self.c_pred = self.c_model(self.omega)
+                return self.e_pred, self.t_pred, self.c_pred
 
         else:
             return self.e_pred, self.t_pred
@@ -138,10 +162,17 @@ class DNMC(Model):
         
         if self.include_censoring_density:
             
-            e_pred, t_pred, c_pred = self.forward_pass(x)
+            e_pred, t_pred, c_pred = self.forward_pass(x)            
+
+            if self.dependent_censoring:
+
+                fc = tf.reduce_sum(yt * c_pred[0], axis=1) + self.tol
+                Fc = tf.reduce_sum(yt * self._survival_from_density(c_pred[1]), axis=1) + self.tol
+
+            else:
             
-            fc = tf.reduce_sum(yt * c_pred, axis=1) + self.tol
-            Fc = tf.reduce_sum(yt * self._survival_from_density(c_pred), axis=1) + self.tol
+                fc = tf.reduce_sum(yt * c_pred, axis=1) + self.tol
+                Fc = tf.reduce_sum(yt * self._survival_from_density(c_pred), axis=1) + self.tol
         
         else:
 
@@ -191,6 +222,7 @@ class NMC(Model):
                  e_layer_sizes=[256, 256], t_layer_sizes=[256, 256], c_layer_sizes=[256, 256],
                  importance_weights=[1., 1.],
                  include_censoring_density=True,
+                 dependent_censoring=False,
                  n_bins=50,
                  activation='relu',
                  ld=1e-3, lr=1e-3, tol=1e-3):
@@ -202,6 +234,7 @@ class NMC(Model):
         self.w0 = tf.convert_to_tensor(importance_weights[0], dtype=tf.float32)
         self.w1 = tf.convert_to_tensor(importance_weights[1], dtype=tf.float32)
         self.include_censoring_density = include_censoring_density
+        self.dependent_censoring = dependent_censoring
         self.n_bins = n_bins
         self.activation = activation
         self.tol = tol
@@ -213,8 +246,18 @@ class NMC(Model):
         self.t_model = Sequential(self.t_layers)
         
         if include_censoring_density:
-            self.c_layers = [self.dense(ls) for ls in c_layer_sizes] + [Dense(n_bins, activation='softmax')]
-            self.c_model = Sequential(self.c_layers)
+            if dependent_censoring:
+                self.c_layers = [
+                    [self.dense(ls) for ls in c_layer_sizes] + [Dense(n_bins, activation='softmax')]
+                    for i in range(2)
+                ]
+                self.c_model = [
+                    Sequential(cl)
+                    for cl in self.c_layers
+                ]
+            else:
+                self.c_layers = [self.dense(ls) for ls in c_layer_sizes] + [Dense(n_bins, activation='softmax')]
+                self.c_model = Sequential(self.c_layers)
         
         
     def dense(self, layer_size, activation=None):
@@ -237,7 +280,10 @@ class NMC(Model):
         self.t_pred = self.t_model(x)
 
         if self.include_censoring_density:
-            self.c_pred = self.c_model(x)
+            if self.dependent_censoring:
+                self.c_pred = [cm(x) for cm in self.c_model]
+            else:
+                self.c_pred = self.c_model(x)
             return self.e_pred, self.t_pred, self.c_pred
 
         else:
@@ -267,9 +313,13 @@ class NMC(Model):
         if self.include_censoring_density:
             
             e_pred, t_pred, c_pred = self.forward_pass(x)
-            
-            fc = tf.reduce_sum(yt * c_pred, axis=1) + self.tol
-            Fc = tf.reduce_sum(yt * self._survival_from_density(c_pred), axis=1) + self.tol
+
+            if self.dependent_censoring:
+                fc = tf.reduce_sum(yt * c_pred[0], axis=1) + self.tol
+                Fc = tf.reduce_sum(yt * self._survival_from_density(c_pred[1]), axis=1) + self.tol
+            else:
+                fc = tf.reduce_sum(yt * c_pred, axis=1) + self.tol
+                Fc = tf.reduce_sum(yt * self._survival_from_density(c_pred), axis=1) + self.tol
         
         else:
 
@@ -300,6 +350,7 @@ class NSurv(Model):
                  t_layer_sizes=[256, 256], c_layer_sizes=[256, 256],
                  importance_weights=[1., 1.],
                  include_censoring_density=True,
+                 dependent_censoring=False,
                  n_bins=50,
                  activation='relu',
                  ld=1e-3, lr=1e-3, tol=1e-3):
@@ -311,6 +362,7 @@ class NSurv(Model):
         self.w0 = tf.convert_to_tensor(importance_weights[0], dtype=tf.float32)
         self.w1 = tf.convert_to_tensor(importance_weights[1], dtype=tf.float32)
         self.include_censoring_density = include_censoring_density
+        self.dependent_censoring = dependent_censoring
         self.n_bins = n_bins
         self.activation=activation
         self.tol = tol
@@ -319,8 +371,18 @@ class NSurv(Model):
         self.t_model = Sequential(self.t_layers)
 
         if self.include_censoring_density:
-            self.c_layers = [self.dense(ls) for ls in c_layer_sizes] + [Dense(n_bins, activation='softmax')]
-            self.c_model = Sequential(self.c_layers)
+            if dependent_censoring:
+                self.c_layers = [
+                    [self.dense(ls) for ls in c_layer_sizes] + [Dense(n_bins, activation='softmax')]
+                    for i in range(2)
+                ]
+                self.c_model = [
+                    Sequential(cl)
+                    for cl in self.c_layers
+                ]
+            else:
+                self.c_layers = [self.dense(ls) for ls in c_layer_sizes] + [Dense(n_bins, activation='softmax')]
+                self.c_model = Sequential(self.c_layers)
         
         
     def dense(self, layer_size, activation=None):
@@ -342,7 +404,10 @@ class NSurv(Model):
         self.t_pred = self.t_model(x)
 
         if self.include_censoring_density:
-            self.c_pred = self.c_model(x)
+            if self.dependent_censoring:
+                self.c_pred = [cm(x) for cm in self.c_model]
+            else:
+                self.c_pred = self.c_model(x)
             return self.t_pred, self.c_pred
 
         else:
@@ -372,9 +437,13 @@ class NSurv(Model):
         if self.include_censoring_density:
             
             t_pred, c_pred = self.forward_pass(x)
-            
-            fc = tf.reduce_sum(yt * c_pred, axis=1) + self.tol
-            Fc = tf.reduce_sum(yt * self._survival_from_density(c_pred), axis=1) + self.tol
+
+            if self.dependent_censoring:
+                fc = tf.reduce_sum(yt * c_pred[0], axis=1) + self.tol
+                Fc = tf.reduce_sum(yt * self._survival_from_density(c_pred[1]), axis=1) + self.tol
+            else:
+                fc = tf.reduce_sum(yt * c_pred, axis=1) + self.tol
+                Fc = tf.reduce_sum(yt * self._survival_from_density(c_pred), axis=1) + self.tol
         
         else:
 
@@ -661,16 +730,22 @@ def evaluate_model(
         ttp = np.concatenate(test_t_pred, axis=0)
         num_bins = ttp.shape[1]
         e_auc = roc_auc_score(e_test, 1 - ttp @ np.arange(num_bins) / num_bins)
+        true_rates, pred_rates = calibration_curve(e_test, 1 - ttp @ np.arange(num_bins) / num_bins, nbins=8)
         ci = discrete_ci(test_data[2], test_data[1], ttp)
     elif modelname == 'MLP':
         e_auc = roc_auc_score(e_test, np.concatenate(test_e_pred, axis=0))
+        true_rates, pred_rates = calibration_curve(e_test, np.concatenate(test_e_pred, axis=0), nbins=8)
         ci = None
     else:
         e_auc = roc_auc_score(e_test, np.concatenate(test_e_pred, axis=0))
+        true_rates, pred_rates = calibration_curve(e_test, np.concatenate(test_e_pred, axis=0), nbins=8)
         ci = discrete_ci(
             test_data[2], test_data[1],
             np.concatenate(test_e_pred, axis=0)[:, np.newaxis] * np.concatenate(test_t_pred, axis=0)
         )
+
+    N_total = len(e_test)
+    hl_stat, hl_pval = hosmer_lemeshow_cal_metric(true_rates, pred_rates, N_total)
     
     results = {
         'dataset': dataset,
@@ -681,8 +756,15 @@ def evaluate_model(
         'avg_test_loss': np.mean(test_losses),
         'avg_test_nll': np.mean(test_nlls),
         'e_auc': e_auc,
-        'y_ci': ci
+        'y_ci': ci,
+        'sample_N': N_total,
+        'hl_stat': hl_stat,
+        'hl_pval': hl_pval
     }
+
+    for i, (tr, pr) in enumerate(zip(true_rates, pred_rates)):
+        results['true_event_rate_quantile_%i' % i] = tr
+        results['pred_event_rate_quantile_%i' % i] = pr
 
     if features is None:
         return results
@@ -793,4 +875,28 @@ def pull_split_avg(layer, indices):
     else:
         out_avg = 0.
     return in_avg, out_avg
+
+
+def calibration_curve(y_true, y_pred, nbins=10):
+    
+    bins = np.linspace(0, 1, nbins + 1)
+    quantiles = np.quantile(y_pred, bins)
+
+    avg_tr = []
+    avg_pr = []
+
+    for low, high in zip(quantiles[:-1], quantiles[1:]):
+        idx = (y_pred >= low) & (y_pred <= high)
+        avg_tr.append(np.mean(y_true[idx]))
+        avg_pr.append(np.mean(y_pred[idx]))
+
+    return np.array(avg_tr), np.array(avg_pr)
+
+
+from scipy.stats import chi2
+
+def hosmer_lemeshow_cal_metric(true, pred, N_total):
+    N_per_group = N_total / len(true)
+    stat = np.sum(((true - pred) ** 2) * N_per_group / (pred * (1 - pred)))
+    return stat, chi2.logpdf(stat, len(true) - 2)
 

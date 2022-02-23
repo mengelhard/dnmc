@@ -8,7 +8,9 @@ def onehot(arr, ncategories=None):
 def sigmoid(arr):
     return 1 / (1 + np.exp(-1 * arr))
 
-def generate_semi_synthetic(X, num_distinct_features, num_shared_features, num_bins, random_state, e_prob_spread=2.5):
+def generate_semi_synthetic(
+    X, num_distinct_features, num_shared_features, num_bins, random_state,
+    e_prob_spread=2.5, dependent_censoring=False, censoring_offset_in_sd=1.):
     
     n, m = X.shape
     
@@ -30,6 +32,9 @@ def generate_semi_synthetic(X, num_distinct_features, num_shared_features, num_b
     
     e_prob = sigmoid(e_prob_spread * (e_logits - e_logits.mean()) / e_logits.std())
     e = (rs.rand(len(e_prob)) < e_prob).astype(int)
+
+    if dependent_censoring:
+        c = c + e * censoring_offset_in_sd * np.std(c)
     
     y = e * np.minimum(c, t) + (1 - e) * c
     
@@ -63,7 +68,9 @@ def generate_semi_synthetic(X, num_distinct_features, num_shared_features, num_b
     }
 
 
-def generate_synth_censoring(X, y, s, num_e_features, num_bins, random_state, e_prob_spread=2.5):
+def generate_synth_censoring(
+    X, y, s, num_e_features, num_bins, random_state, 
+    e_prob_spread=2.5, dependent_censoring=False, censoring_offset_in_sd=1.):
     
     n, m = X.shape
     
@@ -78,6 +85,9 @@ def generate_synth_censoring(X, y, s, num_e_features, num_bins, random_state, e_
     e = (rs.rand(len(e_prob)) < e_prob).astype(int)
 
     s = s * e # set to zero wherever e is 0
+
+    if dependent_censoring:
+        y = y + s * censoring_offset_in_sd * np.std(y)
     
     y_disc = np.zeros_like(y)
     

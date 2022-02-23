@@ -31,6 +31,7 @@ N_BINS = 10
 MAX_EPOCHS = 500
 lr = 0.03
 DATATYPE = 'synth_censoring'
+DEPENDENT_CENSORING = False
 RESULTS_NAME = '../results/NACD_' + DATATYPE + '.csv'
 
 assert DATATYPE in ['synth_censoring', 'synthetic', 'real']
@@ -51,14 +52,16 @@ for random_state in [2020, 2016, 2013]:
 
             synth = generate_semi_synthetic(
                 X, num_distinct, num_shared, N_BINS, random_state,
-                e_prob_spread=3.)
+                e_prob_spread=3.,
+                dependent_censoring=DEPENDENT_CENSORING)
 
         elif DATATYPE == 'synth_censoring':
 
             synth = generate_synth_censoring(
                 X, df['SURVIVAL'].values, 1 - df['CENSORED'].values,
                 num_distinct, N_BINS, random_state,
-                e_prob_spread=3.)
+                e_prob_spread=3.,
+                dependent_censoring=DEPENDENT_CENSORING)
         
         x_train, x_val, x_test = X[:1500], X[1500:1900], X[1900:]
 
@@ -74,7 +77,7 @@ for random_state in [2020, 2016, 2013]:
         
         print('Running NMC with lr =', lr)
         
-        model = NMC(n_bins=N_BINS, lr=lr)
+        model = NMC(n_bins=N_BINS, lr=lr, dependent_censoring=DEPENDENT_CENSORING)
         
         train_model(
             model, (x_train, y_train, s_train), (x_val, y_val, s_val),
@@ -90,7 +93,7 @@ for random_state in [2020, 2016, 2013]:
         
         print('Running NSurv with lr =', lr)
         
-        model = NSurv(n_bins=N_BINS, lr=lr)
+        model = NSurv(n_bins=N_BINS, lr=lr, dependent_censoring=DEPENDENT_CENSORING)
         
         train_model(
             model, (x_train, y_train, s_train), (x_val, y_val, s_val),
@@ -124,7 +127,7 @@ for random_state in [2020, 2016, 2013]:
             
             print('Running DNMC (with Psi) with lr =', lr, 'and ld =', ld)
             
-            model = DNMC(n_bins=N_BINS, lr=lr, ld=ld)
+            model = DNMC(n_bins=N_BINS, lr=lr, ld=ld, dependent_censoring=DEPENDENT_CENSORING)
         
             train_model(
                 model, (x_train, y_train, s_train), (x_val, y_val, s_val),
