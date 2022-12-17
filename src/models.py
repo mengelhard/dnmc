@@ -8,6 +8,12 @@ from tensorflow.keras import regularizers
 
 from sklearn.metrics import roc_auc_score
 
+## FEATURES TO ADD
+## - model should follow normal survival analysis conventions
+## - pass s and t, and binning should be internal
+## - survival function should linearly interpolate
+## --- will then need the actual times to evaluate survival function
+## - create functions to predict CMF and survival function at a given time
 
 class DNMC(Model):
     
