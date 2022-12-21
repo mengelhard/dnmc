@@ -146,17 +146,19 @@ class DNMC(Model):
     
     def loss(self, x, t, s):
         
-        nll = self.iweights(s) * self.nll(x, t, s)
+        nll = tf.reduce_mean(self.iweights(s) * self.nll(x, t, s))
+        l = nll
 
         # Add L2 regularizer
 
-        l = tf.reduce_mean(nll + self.losses)
+        for layer_l2 in self.losses:
+            l += layer_l2
 
         # Add MMD regularizer
 
         l += self.ld * tf.cast(mmd(self.omega_model(x), s), dtype=tf.float32)
         
-        return l, tf.reduce_mean(nll)
+        return l, nll
     
     
     def nll(self, x, t, s):
@@ -300,10 +302,15 @@ class NMC(Model):
     
     def loss(self, x, t, s):
         
-        nll = self.iweights(s) * self.nll(x, t, s)
-        l = tf.reduce_mean(nll + self.losses)
+        nll = tf.reduce_mean(self.iweights(s) * self.nll(x, t, s))
+        l = nll
+
+        # Add L2 regularizer
+
+        for layer_l2 in self.losses:
+            l += layer_l2
         
-        return l, tf.reduce_mean(nll)
+        return l, nll
     
 
     def nll(self, x, t, s):
@@ -440,10 +447,15 @@ class NSurv(Model):
     
     def loss(self, x, t, s):
         
-        nll = self.iweights(s) * self.nll(x, t, s)
-        l = tf.reduce_mean(nll + self.losses)
+        nll = tf.reduce_mean(self.iweights(s) * self.nll(x, t, s))
+        l = nll
+
+        # Add L2 regularizer
+
+        for layer_l2 in self.losses:
+            l += layer_l2
         
-        return l, tf.reduce_mean(nll)
+        return l, nll
     
     
     def nll(self, x, t, s):
@@ -563,13 +575,18 @@ class NSurv_MMD(Model):
     
     def loss(self, x, t, s, mmd_binary_variable):
 
-        nll = self.nll(x, t, s)
-        l = tf.reduce_mean(nll + self.losses)
+        nll = tf.reduce_mean(self.nll(x, t, s))
+        l = nll
+
+        # Add L2 regularizer
+
+        for layer_l2 in self.losses:
+            l += layer_l2
         
         # MMD Term
         l += self.ld * tf.cast(mmd(self.representation, mmd_binary_variable), dtype=tf.float32)
         
-        return l, tf.reduce_mean(nll)
+        return l, nll
     
     
     def nll(self, x, t, s):
@@ -649,10 +666,15 @@ class MLP(Model):
     
     def loss(self, x, t, s):
         
-        nll = self.iweights(s) * self.nll(x, t, s)
-        l = tf.reduce_mean(nll + self.losses)
+        nll = tf.reduce_mean(self.iweights(s) * self.nll(x, t, s))
+        l = nll
+
+        # Add L2 regularizer
+
+        for layer_l2 in self.losses:
+            l += layer_l2
         
-        return l, tf.reduce_mean(nll)
+        return l, nll
     
     
     def nll(self, x, t, s):
