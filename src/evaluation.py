@@ -173,7 +173,7 @@ def d_calibration(s_test, t_test, tp_onehot, bin_end_times, bins=10):
     return (chi2_statistic, 1 - chi2.cdf(chi2_statistic, bins - 1))
 
 
-def one_calibration(s_test, t_test, tp_onehot, bin_end_times, n_cal_bins=10):
+def one_calibration(s_test, t_test, tp_onehot, bin_end_times, n_cal_bins=10, return_curves=False):
 
     N_bins = len(bin_end_times)
     N_pred = len(tp_onehot.T)
@@ -185,6 +185,9 @@ def one_calibration(s_test, t_test, tp_onehot, bin_end_times, n_cal_bins=10):
     hs_stats = []
     p_vals = []
     times = []
+    
+    op = []
+    ep = []
 
     for predictions, time in zip(cum_test_pred.T, bin_end_times):
 
@@ -222,12 +225,15 @@ def one_calibration(s_test, t_test, tp_onehot, bin_end_times, n_cal_bins=10):
                     bin_count * prob * (1 - prob)
                 )
                 
-                #observed_probabilities.append(event_probability)
-                #expected_probabilities.append(prob)
+                observed_probabilities.append(event_probability)
+                expected_probabilities.append(prob)
 
             hs_stats.append(hosmer_lemeshow)
             p_vals.append(1 - chi2.cdf(hosmer_lemeshow, n_cal_bins - 1))
             times.append(time)
+            
+            op.append(observed_probabilities)
+            ep.append(expected_probabilities)
 
             # return dict(
             #     p_value=1 - chi2.cdf(hosmer_lemeshow, bins - 1),
@@ -239,8 +245,44 @@ def one_calibration(s_test, t_test, tp_onehot, bin_end_times, n_cal_bins=10):
 
             print('Failed for time', time)
             print(e)
+            
+    if return_curves:
+        return np.array(times), np.array(hs_stats), np.array(p_vals), np.array(op), np.array(ep)
 
     return np.array(times), np.array(hs_stats), np.array(p_vals)
+
+
+def s_cal(event_indicator, observed_time, predicted_cum_event_prob, time_of_prediction, calibration_bw=.1, stride=1):
+            
+    num_events = len(event_indicator)
+
+    prediction_order = np.argsort(-predicted_cum_event_prob)
+    sorted_predictions = predicted_cum_event_prob[prediction_order]
+    sorted_times = observed_time[prediction_order]
+    sorted_event_indicators = event_indicator[prediction_order]
+
+    num_events_in_window = int(num_events * calibration_bw)
+
+    start_indices = np.arange(0, num_events - num_events_in_window, stride)
+
+    pp = []
+    op = []
+
+    for idx in start_indices:
+
+        avg_prob = np.mean(sorted_predictions[idx: idx + num_events_in_window])
+
+        km_model = KaplanMeier(
+            sorted_times[idx: idx + num_events_in_window],
+            sorted_event_indicators[idx: idx + num_events_in_window]
+        )
+
+        event_prob = 1 - km_model.predict(time_of_prediction)
+
+        pp.append(avg_prob)
+        op.append(event_prob)
+        
+    return pp, op
 
 
 def concordance_index(s_train, t_train, s_test, t_test, tp_onehot, bin_end_times,
