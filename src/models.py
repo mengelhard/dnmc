@@ -517,7 +517,7 @@ class NSurv_MMD(Model):
                  encoder_layer_sizes=[256, ],
                  decoder_layer_sizes=[256, ],
                  activation='relu',
-                 ld=1e-3, lr=1e-3, tol=1e-3):
+                 ld=1e-3, lr=1e-3, tol=0.):
         
         super(NSurv_MMD, self).__init__()
 
