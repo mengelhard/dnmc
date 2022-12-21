@@ -137,7 +137,7 @@ class DNMC(Model):
 
     def predict_survival_function(self, x, t):
         y_complete_bins = get_proportion_of_bins_completed(np.ones(len(x)) * t, self.bins)
-        return 1 - tf.reduce_sum(y_complete_bins * self.forward_pass(x), axis=1) + self.tol
+        return 1 - tf.reduce_sum(y_complete_bins * self.forward_pass(x), axis=1)
     
     
     def iweights(self, s):
@@ -215,7 +215,7 @@ class NMC(Model):
                  include_censoring_density=True,
                  dependent_censoring=False,
                  activation='relu',
-                 ld=1e-3, lr=1e-3, tol=1e-3):
+                 ld=1e-3, lr=1e-3, tol=1e-8):
         
         super(NMC, self).__init__()
 
@@ -293,7 +293,7 @@ class NMC(Model):
 
     def predict_survival_function(self, x, t):
         y_complete_bins = get_proportion_of_bins_completed(np.ones(len(x)) * t, self.bins)
-        return 1 - tf.reduce_sum(y_complete_bins * self.forward_pass(x), axis=1) + self.tol
+        return 1 - tf.reduce_sum(y_complete_bins * self.forward_pass(x), axis=1)
     
     
     def iweights(self, s):
@@ -364,7 +364,7 @@ class NSurv(Model):
                  include_censoring_density=True,
                  dependent_censoring=False,
                  activation='relu',
-                 ld=1e-3, lr=1e-3, tol=1e-3):
+                 ld=1e-3, lr=1e-3, tol=1e-8):
         
         super(NSurv, self).__init__()
 
@@ -438,7 +438,7 @@ class NSurv(Model):
 
     def predict_survival_function(self, x, t):
         y_complete_bins = get_proportion_of_bins_completed(np.ones(len(x)) * t, self.bins)
-        return 1 - tf.reduce_sum(y_complete_bins * self.forward_pass(x), axis=1) + self.tol
+        return 1 - tf.reduce_sum(y_complete_bins * self.forward_pass(x), axis=1)
     
     
     def iweights(self, s):
@@ -517,7 +517,7 @@ class NSurv_MMD(Model):
                  encoder_layer_sizes=[256, ],
                  decoder_layer_sizes=[256, ],
                  activation='relu',
-                 ld=1e-3, lr=1e-3, tol=0.):
+                 ld=1e-3, lr=1e-3, tol=1e-8):
         
         super(NSurv_MMD, self).__init__()
 
@@ -570,7 +570,7 @@ class NSurv_MMD(Model):
 
     def predict_survival_function(self, x, t):
         y_complete_bins = get_proportion_of_bins_completed(np.ones(len(x)) * t, self.bins)
-        return 1 - tf.reduce_sum(y_complete_bins * self.forward_pass(x)[:, :-1], axis=1) + self.tol
+        return 1 - tf.reduce_sum(y_complete_bins * self.forward_pass(x)[:, :-1], axis=1)
 
     
     def loss(self, x, t, s, mmd_binary_variable):
