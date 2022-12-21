@@ -49,7 +49,7 @@ class DNMC(Model):
         self.omega_layers = [self.dense(ls, activation=rep_activation) for ls in omega_layer_sizes]
         
         self.e_layers = [self.dense(ls) for ls in e_layer_sizes] + [self.dense(1, activation='sigmoid')]
-        self.t_layers = [self.dense(ls) for ls in t_layer_sizes] + [self.dense(n_bins, activation='softmax')]
+        self.t_layers = [self.dense(ls) for ls in t_layer_sizes] + [self.dense(self.n_bins, activation='softmax')]
         
         self.phi_model = Sequential(self.phi_layers)
         if include_psi:
@@ -63,14 +63,14 @@ class DNMC(Model):
 
             if dependent_censoring:
                 self.c_layers = [
-                    [self.dense(ls) for ls in c_layer_sizes] + [self.dense(n_bins, activation='softmax')]
+                    [self.dense(ls) for ls in c_layer_sizes] + [self.dense(self.n_bins, activation='softmax')]
                     for i in range(2)
                 ]
                 self.c_model = [Sequential(cl) for cl in self.c_layers]
 
             else:
             
-                self.c_layers = [self.dense(ls) for ls in c_layer_sizes] + [self.dense(n_bins, activation='softmax')]
+                self.c_layers = [self.dense(ls) for ls in c_layer_sizes] + [self.dense(self.n_bins, activation='softmax')]
                 self.c_model = Sequential(self.c_layers)
         
         
@@ -228,7 +228,7 @@ class NMC(Model):
         self.tol = tol
         
         self.e_layers = [self.dense(ls) for ls in e_layer_sizes] + [self.dense(1, activation='sigmoid')]
-        self.t_layers = [self.dense(ls) for ls in t_layer_sizes] + [self.dense(n_bins, activation='softmax')]
+        self.t_layers = [self.dense(ls) for ls in t_layer_sizes] + [self.dense(self.n_bins, activation='softmax')]
         
         self.e_model = Sequential(self.e_layers)
         self.t_model = Sequential(self.t_layers)
@@ -236,7 +236,7 @@ class NMC(Model):
         if include_censoring_density:
             if dependent_censoring:
                 self.c_layers = [
-                    [self.dense(ls) for ls in c_layer_sizes] + [self.dense(n_bins, activation='softmax')]
+                    [self.dense(ls) for ls in c_layer_sizes] + [self.dense(self.n_bins, activation='softmax')]
                     for i in range(2)
                 ]
                 self.c_model = [
@@ -244,7 +244,7 @@ class NMC(Model):
                     for cl in self.c_layers
                 ]
             else:
-                self.c_layers = [self.dense(ls) for ls in c_layer_sizes] + [self.dense(n_bins, activation='softmax')]
+                self.c_layers = [self.dense(ls) for ls in c_layer_sizes] + [self.dense(self.n_bins, activation='softmax')]
                 self.c_model = Sequential(self.c_layers)
         
         
@@ -370,13 +370,13 @@ class NSurv(Model):
         self.activation=activation
         self.tol = tol
         
-        self.t_layers = [self.dense(ls) for ls in t_layer_sizes] + [self.dense(n_bins, activation='softmax')]
+        self.t_layers = [self.dense(ls) for ls in t_layer_sizes] + [self.dense(self.n_bins, activation='softmax')]
         self.t_model = Sequential(self.t_layers)
 
         if self.include_censoring_density:
             if dependent_censoring:
                 self.c_layers = [
-                    [self.dense(ls) for ls in c_layer_sizes] + [self.dense(n_bins, activation='softmax')]
+                    [self.dense(ls) for ls in c_layer_sizes] + [self.dense(self.n_bins, activation='softmax')]
                     for i in range(2)
                 ]
                 self.c_model = [
@@ -384,7 +384,7 @@ class NSurv(Model):
                     for cl in self.c_layers
                 ]
             else:
-                self.c_layers = [self.dense(ls) for ls in c_layer_sizes] + [self.dense(n_bins, activation='softmax')]
+                self.c_layers = [self.dense(ls) for ls in c_layer_sizes] + [self.dense(self.n_bins, activation='softmax')]
                 self.c_model = Sequential(self.c_layers)
         
         
@@ -515,7 +515,7 @@ class NSurv_MMD(Model):
         self.tol = tol
         
         self.encoder_layers = [self.dense(ls) for ls in encoder_layer_sizes]
-        self.decoder_layers = [self.dense(ls) for ls in decoder_layer_sizes] + [self.dense(n_bins + 1, activation='softmax')]
+        self.decoder_layers = [self.dense(ls) for ls in decoder_layer_sizes] + [self.dense(self.n_bins + 1, activation='softmax')]
         
         self.encoder = Sequential(self.encoder_layers)
         self.decoder = Sequential(self.decoder_layers)
