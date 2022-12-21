@@ -899,6 +899,8 @@ def train_model_MMD(
         )
         print('')
 
+    return epoch_idx, np.mean(train_losses), np.mean(train_nlls), np.mean(val_losses), np.mean(val_nlls)
+
 
 def get_median(v):
     v = tf.reshape(v, [-1])
